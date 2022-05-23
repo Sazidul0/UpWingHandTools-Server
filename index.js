@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -13,11 +14,14 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 
+
+
 async function run() {
     try {
         await client.connect();
         const toolsCollection = client.db('upwing-hand-tools').collection('tools');
         const orderCollection = client.db('upwing-hand-tools').collection('order');
+        const userCollection = client.db('upwing-hand-tools').collection('users');
 
         // Getting all Tools
         app.get('/tools', async (req, res) => {
@@ -40,6 +44,20 @@ async function run() {
             const order = req.body;
             const result = await orderCollection.insertOne(order);
             res.send(result);
+        })
+
+        // Update or create user
+        app.put('/user/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: user,
+            };
+            const result = await userCollection.updateOne(filter, updatedDoc, options)
+            const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
+            res.send({ result, token });
         })
     }
     finally {
