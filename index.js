@@ -17,6 +17,7 @@ async function run() {
     try {
         await client.connect();
         const toolsCollection = client.db('upwing-hand-tools').collection('tools');
+        const orderCollection = client.db('upwing-hand-tools').collection('order');
 
         // Getting all Tools
         app.get('/tools', async (req, res) => {
@@ -31,6 +32,13 @@ async function run() {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await toolsCollection.findOne(query);
+            res.send(result);
+        })
+
+        // Post one Order
+        app.post('/order', async (req, res) => {
+            const order = req.body;
+            const result = await orderCollection.insertOne(order);
             res.send(result);
         })
     }
