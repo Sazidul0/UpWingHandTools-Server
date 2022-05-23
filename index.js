@@ -13,7 +13,21 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-
+// Verify Jsonwebtoken
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send({ message: 'UnAuthorized Access' })
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden Access' })
+        }
+        req.decoded = decoded;
+        next();
+    })
+}
 
 
 async function run() {
@@ -32,7 +46,7 @@ async function run() {
         })
 
         // Get one Tool
-        app.get('/tools/:id', async (req, res) => {
+        app.get('/tools/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await toolsCollection.findOne(query);
@@ -40,10 +54,24 @@ async function run() {
         })
 
         // Post one Order
-        app.post('/order', async (req, res) => {
+        app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body;
             const result = await orderCollection.insertOne(order);
             res.send(result);
+        })
+
+        // Get all Order for an User
+        app.get('/order', verifyJWT, async (req, res) => {
+            const user = req.query.user;
+            const decodedEmail = req.decoded.email;
+            if (user === decodedEmail) {
+                const query = { user: user };
+                const orders = await orderCollection.find(query).toArray();
+                return res.send(orders);
+            }
+            else {
+                return res.status(403).send({ message: 'Forbidden Access' })
+            }
         })
 
         // Update or create user
