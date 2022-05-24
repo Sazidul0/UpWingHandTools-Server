@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 app.use(cors());
 app.use(express.json())
@@ -36,6 +37,7 @@ async function run() {
         const toolsCollection = client.db('upwing-hand-tools').collection('tools');
         const orderCollection = client.db('upwing-hand-tools').collection('order');
         const userCollection = client.db('upwing-hand-tools').collection('users');
+        const paymentCollection = client.db('upwing-hand-tools').collection('payment');
 
         // Getting all Tools
         app.get('/tools', async (req, res) => {
@@ -60,6 +62,14 @@ async function run() {
             res.send(result);
         })
 
+        // Get one Order
+        app.get('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const order = await orderCollection.findOne(query);
+            res.send(order);
+        })
+
         // Get all Order for an User
         app.get('/order', verifyJWT, async (req, res) => {
             const user = req.query.user;
@@ -72,6 +82,22 @@ async function run() {
             else {
                 return res.status(403).send({ message: 'Forbidden Access' })
             }
+        })
+
+        // Update Order Payment Info
+        app.patch('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const result = await paymentCollection.insertOne(payment);
+            const updateOrder = await orderCollection.updateOne(filter, updatedDoc);
+            res.send(updatedDoc)
         })
 
         // Update or create user
@@ -123,7 +149,20 @@ async function run() {
             const user = await userCollection.findOne({ email: email });
             const isAdmin = user.role === 'admin';
             res.send({ admin: isAdmin });
-        })
+        });
+
+        // Payment
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const credential = req.body;
+            const price = credential.price;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            res.send({ clientSecret: paymentIntent.client_secret })
+        });
     }
     finally {
 
