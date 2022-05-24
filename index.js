@@ -38,6 +38,7 @@ async function run() {
         const orderCollection = client.db('upwing-hand-tools').collection('order');
         const userCollection = client.db('upwing-hand-tools').collection('users');
         const paymentCollection = client.db('upwing-hand-tools').collection('payment');
+        const profileCollection = client.db('upwing-hand-tools').collection('profile');
 
         // Getting all Tools
         app.get('/tools', async (req, res) => {
@@ -166,6 +167,7 @@ async function run() {
                 $set: user,
             };
             const result = await userCollection.updateOne(filter, updatedDoc, options)
+            const profile = await profileCollection.updateOne(filter, updatedDoc, options)
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
             res.send({ result, token });
         })
@@ -186,6 +188,31 @@ async function run() {
             };
             const result = await userCollection.updateOne(filter, updatedDoc)
             res.send(result);
+        })
+
+        // Update User Info
+        app.patch('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const userInfo = req.body;
+            const updatedDoc = {
+                $set: {
+                    education: userInfo.education,
+                    address: userInfo.address,
+                    phone: userInfo.phone,
+                    linkedIn: userInfo.linkedIn
+                }
+            };
+            const result = await profileCollection.updateOne(filter, updatedDoc)
+            res.send(result);
+        })
+
+        // Get a single user Info
+        app.get('/profile/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const user = await profileCollection.findOne(filter);
+            res.send(user);
         })
 
         // Get Admin
