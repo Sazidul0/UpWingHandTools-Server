@@ -91,13 +91,54 @@ async function run() {
             const filter = { _id: ObjectId(id) };
             const updatedDoc = {
                 $set: {
-                    paid: true,
+                    paid: "panding",
                     transactionId: payment.transactionId
                 }
             }
             const result = await paymentCollection.insertOne(payment);
             const updateOrder = await orderCollection.updateOne(filter, updatedDoc);
             res.send(updatedDoc)
+        });
+
+
+        // Verify Admin
+        const verifyAdmin = async (req, res, next) => {
+            const requester = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({ email: requester })
+            if (requesterAccount.role === 'admin') {
+                next();
+            }
+            else {
+                res.status(403).send({ message: 'Forbidden' })
+            }
+        }
+
+
+        // Get all Order for Admin
+        app.get('/allorder', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await orderCollection.find().toArray();
+            res.send(result);
+        })
+
+        // Update order Info by admin
+        app.patch('/allorder/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: "paid"
+                }
+            }
+            const updateOrder = await orderCollection.updateOne(filter, updatedDoc);
+            res.send(updatedDoc)
+        });
+
+        // Delete a Order by Admin
+        app.delete('/allorder/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await orderCollection.deleteOne(filter);
+            res.send(result);
         })
 
         // Update or create user
@@ -120,17 +161,6 @@ async function run() {
             res.send(users);
         })
 
-        // Verify Admin
-        const verifyAdmin = async (req, res, next) => {
-            const requester = req.decoded.email;
-            const requesterAccount = await userCollection.findOne({ email: requester })
-            if (requesterAccount.role === 'admin') {
-                next();
-            }
-            else {
-                res.status(403).send({ message: 'Forbidden' })
-            }
-        }
 
         // Create or Upadate Admin
         app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
