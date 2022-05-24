@@ -133,6 +133,21 @@ async function run() {
             res.send(updatedDoc)
         });
 
+        // Post a tool by Admin
+        app.post('/tools', verifyJWT, verifyAdmin, async (req, res) => {
+            const tool = req.body;
+            const result = await toolsCollection.insertOne(tool);
+            res.send(result);
+        });
+
+        // Delete a tool by Admin
+        app.delete('/tools/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await toolsCollection.deleteOne(filter);
+            res.send(result);
+        })
+
         // Delete a Order by Admin
         app.delete('/allorder/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
