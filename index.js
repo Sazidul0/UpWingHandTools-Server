@@ -39,6 +39,7 @@ async function run() {
         const userCollection = client.db('upwing-hand-tools').collection('users');
         const paymentCollection = client.db('upwing-hand-tools').collection('payment');
         const profileCollection = client.db('upwing-hand-tools').collection('profile');
+        const reviewCollection = client.db('upwing-hand-tools').collection('review');
 
         // Getting all Tools
         app.get('/tools', async (req, res) => {
@@ -53,6 +54,21 @@ async function run() {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await toolsCollection.findOne(query);
+            res.send(result);
+        })
+
+        // Post a review
+        app.post('/review', verifyJWT, async (req, res) => {
+            const review = req.body;
+            const result = await reviewCollection.insertOne(review);
+            res.send(result);
+        });
+
+        // Get all review
+        app.get('/review', async (req, res) => {
+            const query = {};
+            const cursor = reviewCollection.find(query)
+            const result = await cursor.toArray();
             res.send(result);
         })
 
